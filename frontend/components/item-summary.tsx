@@ -13,7 +13,8 @@ export function ItemSummary() {
   });
 
   if (isPending) return <Skeleton className="h-11 w-40 rounded-md" />;
-  if (isError) return <p className="text-sm text-muted-foreground">Unavailable</p>;
+  if (isError)
+    return <p className="text-sm text-muted-foreground">Unavailable</p>;
 
   return (
     <div className="flex items-baseline gap-8">

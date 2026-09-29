@@ -28,8 +28,6 @@ async def create_meeting(payload: MeetingCreate, session: SessionDep) -> Meeting
 async def delete_meeting(meeting_id: uuid.UUID, session: SessionDep) -> Response:
     meeting = await meetings_service.get_meeting(session, meeting_id)
     if meeting is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
     await meetings_service.delete_meeting(session, meeting)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

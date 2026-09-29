@@ -19,22 +19,14 @@ class Meeting(Base):
         server_default=func.gen_random_uuid(),
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
-    category: Mapped[str] = mapped_column(
-        String(50), nullable=False, server_default="sync"
-    )
-    start_time: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    category: Mapped[str] = mapped_column(String(50), nullable=False, server_default="sync")
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
-    attendee_count: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default="2"
-    )
+    attendee_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="2")
     hourly_rate_usd: Mapped[float] = mapped_column(
         Numeric(10, 2), nullable=False, server_default="65.00"
     )
-    estimated_cost_usd: Mapped[float] = mapped_column(
-        Numeric(10, 2), nullable=False
-    )
+    estimated_cost_usd: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

@@ -20,7 +20,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Spry",
-  description: "Spry — Meeting analytics & deep-work optimization platform (FastAPI + Next.js + Postgres)",
+  description:
+    "Spry — Meeting analytics & deep-work optimization platform (FastAPI + Next.js + Postgres)",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -1,7 +1,14 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Calendar, Clock, DollarSign, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  DollarSign,
+  Plus,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -242,8 +249,8 @@ export default function MeetingsPage() {
                         <Badge variant="outline">{m.category}</Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {m.duration_minutes} min · {m.attendee_count} attendees ·
-                        Est. cost ${m.estimated_cost_usd.toFixed(2)}
+                        {m.duration_minutes} min · {m.attendee_count} attendees
+                        · Est. cost ${m.estimated_cost_usd.toFixed(2)}
                       </p>
                     </div>
                     <Button

@@ -18,7 +18,10 @@ export function HealthBadge() {
   if (isError || data?.database !== "ok") {
     return (
       <Badge variant="destructive" className="gap-1.5 rounded-md">
-        <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />
+        <span
+          aria-hidden
+          className="size-1.5 shrink-0 rounded-full bg-current"
+        />
         Unavailable
       </Badge>
     );
