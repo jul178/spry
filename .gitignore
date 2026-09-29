@@ -28,3 +28,8 @@ out/
 
 # --- docker ---
 pgdata/
+
+# --- local study notes & architecture diagrams ---
+spry_*.png
+spry_*.md
+
