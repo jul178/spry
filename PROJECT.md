@@ -54,15 +54,12 @@ spry/
 └── frontend/                         # React + Vite + Tailwind + shadcn/ui single-page application
     ├── Dockerfile                    # Builds node:20.17.0-slim image and runs Vite dev server
     ├── package.json                  # Pinned frontend dependencies and npm scripts
-    ├── tsconfig.json                 # TypeScript compiler configuration
-    ├── vite.config.ts                # Vite configuration (listens on 0.0.0.0:5173)
-    ├── tailwind.config.js            # Tailwind CSS theme configuration
-    ├── postcss.config.js             # PostCSS configuration for Tailwind
+    ├── vite.config.ts                # Vite bundler + @tailwindcss/vite plugin (listens on 0.0.0.0:5173)
     ├── index.html                    # HTML shell mounting the React app
     └── src/                          # Frontend source code
         ├── main.tsx                  # React DOM entry point
         ├── App.tsx                   # Main page: lists meetings and renders the "Add Meeting" form
-        ├── index.css                 # Tailwind CSS directives and shadcn/ui CSS variables
+        ├── index.css                 # @import "tailwindcss" and shadcn/ui CSS variables
         ├── lib/                      # Shared frontend utilities
         │   ├── api.ts                # Typed fetch wrapper for GET /api/meetings & POST /api/meetings
         │   └── utils.ts              # Tailwind class merger (cn helper for shadcn/ui)
