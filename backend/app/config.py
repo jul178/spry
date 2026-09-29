@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    app_name: str = "Peach API"
+    app_name: str = "Spry API"
     app_env: Literal["development", "test", "production"] = "development"
     log_level: str = "info"
 

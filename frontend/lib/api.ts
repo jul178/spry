@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { getIdToken, signOut } from "@/lib/auth";
-
 /** Browser code must reach the API through the published port; server components
  *  resolve the Compose service name instead. */
 export function apiBaseUrl(): string {
@@ -26,10 +24,6 @@ async function request<T>(
   schema: z.ZodType<T>,
   init?: RequestInit,
 ): Promise<T> {
-  // Every API route needs a signed-in user; don't send what would bounce.
-  const token = await getIdToken();
-  if (!token) throw new ApiError(401, "You are signed out");
-
   let response: Response;
   try {
     response = await fetch(`${apiBaseUrl()}${path}`, {
@@ -37,17 +31,12 @@ async function request<T>(
       cache: "no-store",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         ...(init?.headers ?? {}),
       },
     });
   } catch {
     throw new ApiError(0, "Could not reach the API");
   }
-
-  // The API no longer accepts this session (revoked, or the pool changed):
-  // drop it, and the auth gate sends the user back to the login page.
-  if (response.status === 401) signOut();
 
   if (!response.ok) {
     const detail = await response
@@ -96,11 +85,57 @@ export const itemInputSchema = z.object({
   status: itemStatusSchema,
 });
 
+export const meetingCategories = [
+  "standup",
+  "sync",
+  "one_on_one",
+  "planning",
+  "deep_work",
+] as const;
+export const meetingCategorySchema = z.enum(meetingCategories);
+
+export const meetingSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  category: z.string(),
+  start_time: z.string(),
+  duration_minutes: z.number(),
+  attendee_count: z.number(),
+  hourly_rate_usd: z.number(),
+  estimated_cost_usd: z.number(),
+  created_at: z.string(),
+});
+
+export const meetingSummarySchema = z.object({
+  total_meetings: z.number(),
+  total_hours: z.number(),
+  total_cost_usd: z.number(),
+  deep_work_blocks: z.number(),
+  overload_warning: z.boolean(),
+});
+
+export const meetingListSchema = z.object({
+  items: z.array(meetingSchema),
+  summary: meetingSummarySchema,
+});
+
+export const meetingInputSchema = z.object({
+  title: z.string().min(1, "Title is required").max(200),
+  category: meetingCategorySchema,
+  start_time: z.string(),
+  duration_minutes: z.number().min(5).max(480),
+  attendee_count: z.number().min(1).max(200),
+  hourly_rate_usd: z.number().min(0).max(1000),
+});
+
 export type ItemStatus = z.infer<typeof itemStatusSchema>;
 export type Item = z.infer<typeof itemSchema>;
 export type ItemList = z.infer<typeof itemListSchema>;
 export type Health = z.infer<typeof healthSchema>;
 export type ItemInput = z.infer<typeof itemInputSchema>;
+export type Meeting = z.infer<typeof meetingSchema>;
+export type MeetingList = z.infer<typeof meetingListSchema>;
+export type MeetingInput = z.infer<typeof meetingInputSchema>;
 
 /* --- endpoints --- */
 
@@ -129,4 +164,15 @@ export const api = {
 
   deleteItem: (id: string) =>
     request(`/api/v1/items/${id}`, z.undefined(), { method: "DELETE" }),
+
+  listMeetings: () => request("/api/v1/meetings", meetingListSchema),
+
+  createMeeting: (payload: MeetingInput) =>
+    request("/api/v1/meetings", meetingSchema, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteMeeting: (id: string) =>
+    request(`/api/v1/meetings/${id}`, z.undefined(), { method: "DELETE" }),
 };

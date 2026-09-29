@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
 
 import { Providers } from "@/components/providers";
+import { SiteHeader } from "@/components/site-header";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
@@ -18,8 +19,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Peach",
-  description: "FastAPI + Next.js + Postgres starter",
+  title: "Spry",
+  description: "Spry — Meeting analytics & deep-work optimization platform (FastAPI + Next.js + Postgres)",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -32,7 +33,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           hydrates; this silences that one-level mismatch only. */}
       <body className="flex min-h-full flex-col" suppressHydrationWarning>
         <Providers>
-          {children}
+          <SiteHeader />
+          <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-12 sm:px-8">
+            {children}
+          </main>
+          <footer className="mt-auto">
+            <div className="mx-auto w-full max-w-5xl px-6 py-8 text-xs text-muted-foreground sm:px-8">
+              Spry — FastAPI, Next.js and PostgreSQL, wired together.
+            </div>
+          </footer>
           <Toaster />
         </Providers>
       </body>
