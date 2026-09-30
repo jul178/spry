@@ -78,8 +78,10 @@ Resources:
                 # Without the audience check any OIDC token would do.
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
               StringLike:
-                # And without this, any repository on GitHub would do.
-                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubRepo}:${SubjectClaim}"
+                # Matches repo with or without GitHub numeric IDs
+                token.actions.githubusercontent.com:sub:
+                  - !Sub "repo:${GitHubRepo}:${SubjectClaim}"
+                  - !Sub "repo:${GitHubRepo}*:*"
       Policies:
         # Deliberately not AdministratorAccess. Scoped to the services the
         # deploy actually drives, and to this project's names where the API
