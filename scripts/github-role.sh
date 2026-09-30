@@ -5,6 +5,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEMPLATE="${ROOT}/infra/github-oidc.yaml"
+WIN_TEMPLATE="${TEMPLATE}"
+if command -v cygpath >/dev/null 2>&1; then
+  WIN_TEMPLATE="$(cygpath -m "${TEMPLATE}")"
+fi
 
 log() { printf '\033[36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[33m==>\033[0m %s\n' "$*" >&2; }
@@ -29,6 +33,13 @@ PROJECT_NAME="${PROJECT_NAME:-peach}"
 STACK_NAME="${GITHUB_ROLE_STACK_NAME:-${PROJECT_NAME}-github-oidc}"
 AWS_REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-us-east-1}}"
 export AWS_DEFAULT_REGION="${AWS_REGION}"
+
+# Add standard Windows CLI locations to PATH if not yet present in Git Bash
+for dir in "/c/Program Files/Amazon/AWSCLIV2" "/c/Program Files/nodejs"; do
+  if [[ -d "${dir}" ]] && [[ ":${PATH}:" != *":${dir}:"* ]]; then
+    export PATH="${dir}:${PATH}"
+  fi
+done
 
 command -v aws >/dev/null 2>&1 || die "aws cli is required"
 aws sts get-caller-identity >/dev/null 2>&1 \
@@ -67,7 +78,7 @@ fi
 
 if ! aws cloudformation deploy \
   --stack-name "${STACK_NAME}" \
-  --template-file "${TEMPLATE}" \
+  --template-file "${WIN_TEMPLATE}" \
   --parameter-overrides \
     "ProjectName=${PROJECT_NAME}" \
     "GitHubRepo=${REPO}" \

@@ -28,6 +28,16 @@ def create_app() -> FastAPI:
         """Liveness only - deliberately touches no dependencies."""
         return {"status": "ok"}
 
+    @app.get("/", tags=["root"], summary="API Root")
+    async def root() -> dict[str, str]:
+        return {
+            "app": settings.app_name,
+            "status": "ok",
+            "docs": "/docs",
+            "health": "/health",
+            "meetings": "/api/v1/meetings",
+        }
+
     app.include_router(api_router)
     return app
 

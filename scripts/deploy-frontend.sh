@@ -8,7 +8,15 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEMPLATE="${ROOT}/infra/frontend.yaml"
+WIN_TEMPLATE="${TEMPLATE}"
+if command -v cygpath >/dev/null 2>&1; then
+  WIN_TEMPLATE="$(cygpath -m "${TEMPLATE}")"
+fi
 APP="${ROOT}/frontend"
+WIN_APP="${APP}"
+if command -v cygpath >/dev/null 2>&1; then
+  WIN_APP="$(cygpath -m "${APP}")"
+fi
 
 log() { printf '\033[36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[33m==>\033[0m %s\n' "$*" >&2; }
@@ -38,6 +46,13 @@ export AWS_DEFAULT_REGION="${AWS_REGION}"
 
 # --- preflight --------------------------------------------------------------
 
+# Add standard Windows CLI locations to PATH if not yet present in Git Bash
+for dir in "/c/Program Files/Amazon/AWSCLIV2" "/c/Program Files/nodejs"; do
+  if [[ -d "${dir}" ]] && [[ ":${PATH}:" != *":${dir}:"* ]]; then
+    export PATH="${dir}:${PATH}"
+  fi
+done
+
 for tool in aws node; do
   command -v "${tool}" >/dev/null 2>&1 || die "${tool} is required but not installed"
 done
@@ -63,15 +78,24 @@ API_URL="${API_URL%/}"
 
 log "building against ${API_URL}"
 
-# The Cognito ids are compiled in too; without them nobody could sign in.
-[[ -n "${COGNITO_CLIENT_ID:-}" && -n "${COGNITO_DOMAIN:-}" ]] \
-  || die "COGNITO_CLIENT_ID / COGNITO_DOMAIN are not set in .env - run make deploy-cognito first"
+# The Cognito ids are compiled in too if configured.
+if [[ -z "${COGNITO_CLIENT_ID:-}" || -z "${COGNITO_DOMAIN:-}" ]]; then
+  warn "COGNITO_CLIENT_ID / COGNITO_DOMAIN are unset in .env - building without Cognito auth"
+fi
 
 # The function URL is always HTTPS; plain HTTP here means a hand-edited .env.
 [[ "${API_URL}" == https://* ]] \
   || die "BACKEND_URL must be https:// - browsers block an HTTPS page calling HTTP"
 
 # --- infrastructure ---------------------------------------------------------
+
+STATUS="$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
+  --query "Stacks[0].StackStatus" --output text 2>/dev/null || true)"
+if [[ "${STATUS}" == "ROLLBACK_COMPLETE" ]]; then
+  log "cleaning up failed stack in ROLLBACK_COMPLETE before deploy"
+  aws cloudformation delete-stack --stack-name "${STACK_NAME}"
+  aws cloudformation wait stack-delete-complete --stack-name "${STACK_NAME}"
+fi
 
 if ! aws cloudformation describe-stacks --stack-name "${STACK_NAME}" >/dev/null 2>&1; then
   log "first deploy - creating ${STACK_NAME} (CloudFront takes a few minutes)"
@@ -81,7 +105,7 @@ fi
 
 if ! aws cloudformation deploy \
   --stack-name "${STACK_NAME}" \
-  --template-file "${TEMPLATE}" \
+  --template-file "${WIN_TEMPLATE}" \
   --parameter-overrides \
     "ProjectName=${PROJECT_NAME}" \
   --no-fail-on-empty-changeset \
@@ -113,8 +137,8 @@ rm -rf "${APP}/out"
 (cd "${APP}" && NEXT_OUTPUT=export \
   NEXT_PUBLIC_API_URL="${API_URL}" \
   NEXT_PUBLIC_COGNITO_REGION="${COGNITO_REGION:-${AWS_REGION}}" \
-  NEXT_PUBLIC_COGNITO_CLIENT_ID="${COGNITO_CLIENT_ID}" \
-  NEXT_PUBLIC_COGNITO_DOMAIN="${COGNITO_DOMAIN}" \
+  NEXT_PUBLIC_COGNITO_CLIENT_ID="${COGNITO_CLIENT_ID:-}" \
+  NEXT_PUBLIC_COGNITO_DOMAIN="${COGNITO_DOMAIN:-}" \
   NEXT_PUBLIC_COGNITO_GOOGLE_ENABLED="${COGNITO_GOOGLE_ENABLED:-false}" \
   "${PM[@]}" build)
 [[ -f "${APP}/out/index.html" ]] || die "the export produced no out/index.html"
@@ -125,13 +149,13 @@ rm -rf "${APP}/out"
 # be asking for the previous build's chunks. They are immutable, so the edge
 # and the browser may keep them forever.
 log "uploading to s3://${BUCKET}"
-aws s3 sync "${APP}/out/_next/static" "s3://${BUCKET}/_next/static" \
+aws s3 sync "${WIN_APP}/out/_next/static" "s3://${BUCKET}/_next/static" \
   --cache-control "public,max-age=31536000,immutable" \
   --only-show-errors
 
 # Then everything else, which must never be cached hard or a deploy would not
 # be visible until the TTL expired.
-aws s3 sync "${APP}/out" "s3://${BUCKET}" \
+aws s3 sync "${WIN_APP}/out" "s3://${BUCKET}" \
   --delete \
   --exclude "_next/static/*" \
   --cache-control "public,max-age=0,must-revalidate" \

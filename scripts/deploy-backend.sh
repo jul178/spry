@@ -80,6 +80,13 @@ PY
 
 # --- preflight --------------------------------------------------------------
 
+# Add standard Windows CLI locations to PATH if not yet present in Git Bash
+for dir in "/c/Program Files/Amazon/AWSCLIV2" "/c/Program Files/nodejs" "/c/Program Files/Docker/Docker/resources/bin"; do
+  if [[ -d "${dir}" ]] && [[ ":${PATH}:" != *":${dir}:"* ]]; then
+    export PATH="${dir}:${PATH}"
+  fi
+done
+
 for tool in aws docker python3 curl; do
   command -v "${tool}" >/dev/null 2>&1 || die "${tool} is required but not installed"
 done
@@ -217,6 +224,15 @@ chmod 600 "${PARAMS_FILE}"
 RESULT_FILE="$(mktemp)"
 trap 'rm -f "${PARAMS_FILE}" "${RESULT_FILE}"' EXIT
 
+WIN_PARAMS_FILE="${PARAMS_FILE}"
+WIN_RESULT_FILE="${RESULT_FILE}"
+WIN_TEMPLATE="${TEMPLATE}"
+if command -v cygpath >/dev/null 2>&1; then
+  WIN_PARAMS_FILE="$(cygpath -m "${PARAMS_FILE}")"
+  WIN_RESULT_FILE="$(cygpath -m "${RESULT_FILE}")"
+  WIN_TEMPLATE="$(cygpath -m "${TEMPLATE}")"
+fi
+
 PROJECT_NAME="${PROJECT_NAME}" \
 VPC_ID="${AWS_VPC_ID}" \
 SUBNETS="${AWS_SUBNET_IDS}" \
@@ -278,16 +294,24 @@ with open(sys.argv[1], "w") as fh:
     )
 PY
 
-if ! aws cloudformation describe-stacks --stack-name "${STACK_NAME}" >/dev/null 2>&1; then
-  log "first deploy - creating ${STACK_NAME} (Aurora takes around 10 minutes)"
+STACK_STATUS="$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "MISSING")"
+if [[ "${STACK_STATUS}" == "ROLLBACK_COMPLETE" ]]; then
+  warn "stack is in ROLLBACK_COMPLETE - cleaning it up before deploying"
+  aws cloudformation delete-stack --stack-name "${STACK_NAME}"
+  aws cloudformation wait stack-delete-complete --stack-name "${STACK_NAME}"
+  STACK_STATUS="MISSING"
+fi
+
+if [[ "${STACK_STATUS}" == "MISSING" ]]; then
+  log "first deploy - creating ${STACK_NAME} (takes a few minutes)"
 else
   log "updating ${STACK_NAME}"
 fi
 
 if ! aws cloudformation deploy \
   --stack-name "${STACK_NAME}" \
-  --template-file "${TEMPLATE}" \
-  --parameter-overrides "file://${PARAMS_FILE}" \
+  --template-file "${WIN_TEMPLATE}" \
+  --parameter-overrides "file://${WIN_PARAMS_FILE}" \
   --capabilities CAPABILITY_IAM \
   --no-fail-on-empty-changeset \
   --tags "${TAGS[@]}"; then
@@ -318,7 +342,7 @@ FUNCTION_ERROR="$(aws lambda invoke \
   --cli-read-timeout 900 \
   --payload '{"action":"migrate"}' \
   --query FunctionError --output text \
-  "${RESULT_FILE}")"
+  "${WIN_RESULT_FILE}")"
 if [[ -n "${FUNCTION_ERROR}" && "${FUNCTION_ERROR}" != "None" ]]; then
   cat "${RESULT_FILE}" >&2
   echo >&2
