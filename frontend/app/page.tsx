@@ -20,7 +20,7 @@ export default function DashboardPage() {
       <PageHeader
         icon="⚡"
         title="Spry Dashboard"
-        description="Meeting analytics & deep-work optimization platform (FastAPI + Next.js + PostgreSQL)."
+        description="Real-time workspace analytics and team workflow overview."
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -73,23 +73,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-
-      <section className="flex gap-3 rounded-xl bg-tint-blue p-5">
-        <span aria-hidden className="mt-0.5 text-xl leading-none">
-          💡
-        </span>
-        <div>
-          <h2 className="font-heading text-base font-semibold text-tint-blue-foreground">
-            How the pieces fit
-          </h2>
-          <p className="mt-1.5 max-w-prose text-sm text-tint-blue-foreground/85">
-            The browser talks to Next.js, Next.js talks to FastAPI over the
-            published port, and FastAPI keeps its rows in PostgreSQL (both{" "}
-            <code>meetings</code> and <code>items</code> tables). Every card
-            above is a round trip through all three.
-          </p>
-        </div>
-      </section>
     </div>
   );
 }

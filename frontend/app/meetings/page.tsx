@@ -78,7 +78,7 @@ export default function MeetingsPage() {
       <PageHeader
         icon="📊"
         title="Meetings & Deep-Work Analytics"
-        description="First vertical slice from PROJECT.md: log meetings into the PostgreSQL meetings table and compute real-time team cost and focus load."
+        description="Track team syncs, compute cost impact, and maintain focused deep-work blocks."
       />
 
       {isPending ? (

@@ -20,8 +20,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Spry",
-  description:
-    "Spry — Meeting analytics & deep-work optimization platform (FastAPI + Next.js + Postgres)",
+  description: "Spry — Meeting analytics and deep-work optimization platform",
 };
 
 export default function RootLayout({
@@ -44,7 +43,7 @@ export default function RootLayout({
           </main>
           <footer className="mt-auto">
             <div className="mx-auto w-full max-w-5xl px-6 py-8 text-xs text-muted-foreground sm:px-8">
-              Spry — FastAPI, Next.js and PostgreSQL, wired together.
+              © 2026 Spry. All rights reserved.
             </div>
           </footer>
           <Toaster />
