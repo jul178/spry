@@ -33,8 +33,8 @@ jobs:
       - name: Assume the deploy role
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN || secrets.AWS_DEPLOY_ROLE_ARN || 'arn:aws:iam::132568187649:role/spry-github-deploy' }}
+          aws-region: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'us-east-1' }}
           role-session-name: gha-deploy-backend-${{ github.run_id }}
 
       # The function runs on arm64 and this runner is x86, so the image is
@@ -50,13 +50,13 @@ jobs:
           # There is no .env here. Everything else falls back to the script's
           # defaults, and any parameter left empty keeps whatever the stack
           # already has - so a deploy from CI will not undo CORS settings.
-          PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+          PROJECT_NAME: ${{ vars.PROJECT_NAME || 'spry' }}
 
       - name: Summary
         if: always()
         run: |
           API_URL=$(aws cloudformation describe-stacks \
-            --stack-name "${PROJECT_NAME:-peach}-backend" \
+            --stack-name "${PROJECT_NAME:-spry}-backend" \
             --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
             --output text 2>/dev/null || echo "unknown")
           {
@@ -70,4 +70,4 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
         env:
           AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
-          PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+          PROJECT_NAME: ${{ vars.PROJECT_NAME || 'spry' }}
