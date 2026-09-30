@@ -24,7 +24,11 @@ export const metadata: Metadata = {
     "Spry — Meeting analytics & deep-work optimization platform (FastAPI + Next.js + Postgres)",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="en"
