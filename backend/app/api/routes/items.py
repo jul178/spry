@@ -1,9 +1,10 @@
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import get_current_user
 from app.db import SessionDep
 from app.schemas import ItemCreate, ItemList, ItemRead, ItemUpdate
 from app.services import items as items_service
@@ -32,6 +33,7 @@ async def list_items(
 async def create_item(
     payload: ItemCreate,
     session: SessionDep,
+    _user: dict[str, Any] | None = Depends(get_current_user),
 ) -> ItemRead:
     item = await items_service.create_item(session, payload)
     return ItemRead.model_validate(item)

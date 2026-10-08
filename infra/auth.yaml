@@ -1,0 +1,217 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >-
+  Amazon Cognito User Pool with email/password and Google OAuth federation,
+  managed login version 2, and public web client. Deployed by
+  scripts/deploy-cognito.sh (make deploy-cognito).
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: spry
+    Description: Prefix for resource names and tags.
+
+  CognitoDomainPrefix:
+    Type: String
+    Description: Globally unique prefix for https://<prefix>.auth.<region>.amazoncognito.com.
+
+  FrontendUrl:
+    Type: String
+    Description: Base URL of the deployed frontend (e.g. https://d3c60cb1w4a4z2.cloudfront.net).
+
+  LocalPort:
+    Type: Number
+    Default: 3000
+    Description: Local development port for http://localhost:<port>.
+
+  GoogleClientId:
+    Type: String
+    Default: ""
+    Description: Optional Google OAuth 2.0 Web Client ID from Google Cloud Console.
+
+  GoogleClientSecret:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Optional Google OAuth 2.0 Client Secret from Google Cloud Console.
+
+Conditions:
+  HasGoogleProvider: !And
+    - !Not [!Equals [!Ref GoogleClientId, ""]]
+    - !Not [!Equals [!Ref GoogleClientSecret, ""]]
+  NoGoogleProvider: !Not [!Condition HasGoogleProvider]
+
+Resources:
+  # 1. The User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      UserPoolName: !Sub "${ProjectName}-user-pool"
+      UserPoolTier: ESSENTIALS
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      UserPoolTags:
+        PROJECT_NAME: !Ref ProjectName
+
+  # 2. Google Identity Provider (conditional)
+  GoogleIdentityProvider:
+    Type: AWS::Cognito::UserPoolIdentityProvider
+    Condition: HasGoogleProvider
+    Properties:
+      UserPoolId: !Ref UserPool
+      ProviderName: Google
+      ProviderType: Google
+      ProviderDetails:
+        client_id: !Ref GoogleClientId
+        client_secret: !Ref GoogleClientSecret
+        authorize_scopes: "openid email profile"
+      AttributeMapping:
+        email: email
+        email_verified: email_verified
+
+  # 3a. App Client with Google
+  UserPoolClientWithGoogle:
+    Type: AWS::Cognito::UserPoolClient
+    Condition: HasGoogleProvider
+    DependsOn: GoogleIdentityProvider
+    Properties:
+      ClientName: !Sub "${ProjectName}-web-client"
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      SupportedIdentityProviders:
+        - COGNITO
+        - Google
+      CallbackURLs:
+        - !Sub "${FrontendUrl}/auth/callback"
+        - !Sub "${FrontendUrl}/auth/callback/"
+        - !Sub "${FrontendUrl}/"
+        - !Sub "http://localhost:${LocalPort}/auth/callback"
+        - !Sub "http://localhost:${LocalPort}/auth/callback/"
+        - !Sub "http://localhost:${LocalPort}/"
+      LogoutURLs:
+        - !Sub "${FrontendUrl}/"
+        - !Sub "http://localhost:${LocalPort}/"
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+      EnableTokenRevocation: true
+
+  # 3b. App Client without Google (Cognito email/password only)
+  UserPoolClientCognitoOnly:
+    Type: AWS::Cognito::UserPoolClient
+    Condition: NoGoogleProvider
+    Properties:
+      ClientName: !Sub "${ProjectName}-web-client"
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs:
+        - !Sub "${FrontendUrl}/auth/callback"
+        - !Sub "${FrontendUrl}/auth/callback/"
+        - !Sub "${FrontendUrl}/"
+        - !Sub "http://localhost:${LocalPort}/auth/callback"
+        - !Sub "http://localhost:${LocalPort}/auth/callback/"
+        - !Sub "http://localhost:${LocalPort}/"
+      LogoutURLs:
+        - !Sub "${FrontendUrl}/"
+        - !Sub "http://localhost:${LocalPort}/"
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+      EnableTokenRevocation: true
+
+  # 4. User Pool Prefix Domain (ManagedLoginVersion: 2)
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref UserPool
+      Domain: !Ref CognitoDomainPrefix
+      ManagedLoginVersion: 2
+
+  # 5. Managed Login Branding
+  ManagedLoginBranding:
+    Type: AWS::Cognito::ManagedLoginBranding
+    DependsOn:
+      - UserPoolDomain
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientId: !If [HasGoogleProvider, !Ref UserPoolClientWithGoogle, !Ref UserPoolClientCognitoOnly]
+      UseCognitoProvidedValues: true
+
+Outputs:
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+
+  UserPoolArn:
+    Description: Cognito User Pool ARN
+    Value: !GetAtt UserPool.Arn
+
+  ClientId:
+    Description: Public User Pool Client ID
+    Value: !If [HasGoogleProvider, !Ref UserPoolClientWithGoogle, !Ref UserPoolClientCognitoOnly]
+
+  CognitoDomainPrefix:
+    Description: Prefix of the Cognito hosted domain
+    Value: !Ref CognitoDomainPrefix
+
+  CognitoDomain:
+    Description: Fully qualified domain of Cognito
+    Value: !Sub "${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com"
+
+  AuthUrl:
+    Description: Base HTTPS URL of Cognito managed login
+    Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com"
+
+  GoogleRedirectUri:
+    Description: Redirect URI to register in Google Cloud Console
+    Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/oauth2/idpresponse"
+
+  GoogleJavascriptOrigin:
+    Description: Javascript origin to register in Google Cloud Console
+    Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com"
+
+  GoogleConfigured:
+    Description: Whether Google IdP is attached
+    Value: !If [HasGoogleProvider, "true", "false"]

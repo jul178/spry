@@ -19,11 +19,35 @@ export class ApiError extends Error {
   }
 }
 
+function getStoredAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i);
+    if (key && key.startsWith("oidc.user:")) {
+      try {
+        const item = sessionStorage.getItem(key);
+        if (item) {
+          const user = JSON.parse(item);
+          if (user.access_token) return user.access_token;
+        }
+      } catch {
+        // ignore parse error
+      }
+    }
+  }
+  return null;
+}
+
 async function request<T>(
   path: string,
   schema: z.ZodType<T>,
   init?: RequestInit,
 ): Promise<T> {
+  const token = getStoredAccessToken();
+  const authHeaders: Record<string, string> = token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
+
   let response: Response;
   try {
     response = await fetch(`${apiBaseUrl()}${path}`, {
@@ -31,6 +55,7 @@ async function request<T>(
       cache: "no-store",
       headers: {
         "Content-Type": "application/json",
+        ...authHeaders,
         ...(init?.headers ?? {}),
       },
     });

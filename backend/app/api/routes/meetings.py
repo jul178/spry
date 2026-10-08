@@ -1,7 +1,9 @@
 import uuid
+from typing import Any
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
+from app.auth import get_current_user
 from app.db import SessionDep
 from app.schemas.meeting import MeetingCreate, MeetingList, MeetingRead
 from app.services import meetings as meetings_service
@@ -10,7 +12,10 @@ router = APIRouter(prefix="/meetings", tags=["meetings"])
 
 
 @router.get("", response_model=MeetingList, summary="List meetings and load summary")
-async def list_meetings(session: SessionDep) -> MeetingList:
+async def list_meetings(
+    session: SessionDep,
+    _user: dict[str, Any] | None = Depends(get_current_user),
+) -> MeetingList:
     meetings, summary = await meetings_service.list_meetings(session)
     return MeetingList(
         items=[MeetingRead.model_validate(m) for m in meetings],
@@ -19,7 +24,11 @@ async def list_meetings(session: SessionDep) -> MeetingList:
 
 
 @router.post("", response_model=MeetingRead, status_code=status.HTTP_201_CREATED)
-async def create_meeting(payload: MeetingCreate, session: SessionDep) -> MeetingRead:
+async def create_meeting(
+    payload: MeetingCreate,
+    session: SessionDep,
+    _user: dict[str, Any] | None = Depends(get_current_user),
+) -> MeetingRead:
     meeting = await meetings_service.create_meeting(session, payload)
     return MeetingRead.model_validate(meeting)
 
