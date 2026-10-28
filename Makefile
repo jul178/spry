@@ -1,6 +1,6 @@
 COMPOSE := docker compose
 
-.PHONY: help up down build logs ps migrate revision test test-backend test-frontend lint fmt clean shell-backend shell-db deploy-cognito destroy-cognito deploy-backend destroy-backend logs-backend migrate-backend cert domain deploy-frontend destroy-frontend github-role
+.PHONY: help up down build logs ps migrate revision test test-backend test-frontend lint fmt clean shell-backend shell-db deploy-cognito destroy-cognito deploy-backend destroy-backend logs-backend migrate-backend cert domain deploy-frontend destroy-frontend github-role deploy-reports destroy-reports report-now logs-reports-builder logs-reports-mailer
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -84,3 +84,19 @@ destroy-frontend: ## Delete the frontend stack (bucket + distribution)
 
 github-role: ## Create the IAM role GitHub Actions assumes to deploy (OIDC, no keys)
 	./scripts/github-role.sh
+
+deploy-reports: ## Deploy the weekly reports stack (S3 bucket, SQS queues, builder & mailer Lambdas, EventBridge schedule)
+	./scripts/deploy-reports.sh
+
+destroy-reports: ## Delete the reports stack and empty its S3 bucket
+	./scripts/destroy-reports.sh
+
+report-now: ## Build and email an on-demand report for a given week: make report-now WEEK=2026-W39
+	./scripts/report-now.sh $(WEEK)
+
+logs-reports-builder: ## Tail CloudWatch logs for the report builder
+	aws logs tail /aws/lambda/$${PROJECT_NAME:-spry}-report-builder --since 15m
+
+logs-reports-mailer: ## Tail CloudWatch logs for the report mailer
+	aws logs tail /aws/lambda/$${PROJECT_NAME:-spry}-report-mailer --since 15m
+
