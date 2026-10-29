@@ -19,6 +19,16 @@ export class ApiError extends Error {
   }
 }
 
+export class AgendaParserError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "AgendaParserError";
+  }
+}
+
 function getStoredAccessToken(): string | null {
   if (typeof window === "undefined") return null;
   for (let i = 0; i < sessionStorage.length; i++) {
@@ -128,6 +138,8 @@ export const meetingSchema = z.object({
   attendee_count: z.number(),
   hourly_rate_usd: z.number(),
   estimated_cost_usd: z.number(),
+  agenda: z.record(z.string(), z.unknown()).nullable().optional(),
+  ai_suggestion: z.record(z.string(), z.unknown()).nullable().optional(),
   created_at: z.string(),
 });
 
@@ -152,6 +164,29 @@ export const meetingInputSchema = z.object({
   attendee_count: z.number().min(1).max(200),
   hourly_rate_usd: z.number().min(0).max(1000),
 });
+
+const parsedAgendaSchema = z.object({
+  title: z.string().nullable(),
+  starts_at: z.string().nullable(),
+  duration_minutes: z.number().int().nullable(),
+  items: z.array(
+    z.object({
+      topic: z.string(),
+      owner: z.string().nullable(),
+      minutes: z.number().int().nullable(),
+    }),
+  ),
+  action_items: z.array(
+    z.object({
+      task: z.string(),
+      owner: z.string().nullable(),
+      due: z.string().nullable(),
+    }),
+  ),
+  language: z.string(),
+});
+
+export type ParsedAgenda = z.infer<typeof parsedAgendaSchema>;
 
 export type ItemStatus = z.infer<typeof itemStatusSchema>;
 export type Item = z.infer<typeof itemSchema>;
@@ -191,6 +226,94 @@ export const api = {
     request(`/api/v1/items/${id}`, z.undefined(), { method: "DELETE" }),
 
   listMeetings: () => request("/api/v1/meetings", meetingListSchema),
+
+  parseAgenda: async (text: string, signal: AbortSignal) => {
+    const url = process.env.NEXT_PUBLIC_AGENDA_PARSER_URL;
+    if (!url) {
+      throw new AgendaParserError(0, "Agenda parsing is not configured yet.");
+    }
+
+    let response: Response;
+    try {
+      const token = getStoredAccessToken();
+      const now = new Date();
+      const today = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, "0"),
+        String(now.getDate()).padStart(2, "0"),
+      ].join("-");
+      response = await fetch(url, {
+        method: "POST",
+        signal,
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          text,
+          today,
+          tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        }),
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError")
+        throw error;
+      throw new AgendaParserError(
+        0,
+        "Could not reach the agenda parser. You can enter the agenda by hand.",
+      );
+    }
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const message =
+        typeof body?.error === "string" ? body.error : "Agenda parsing failed.";
+      if (response.status === 413) {
+        throw new AgendaParserError(
+          413,
+          "That text is too long. Shorten it to 10,000 characters or less.",
+        );
+      }
+      if (response.status === 422) {
+        throw new AgendaParserError(
+          422,
+          "I couldn't find a meeting agenda in that text. You can enter it by hand.",
+        );
+      }
+      if (response.status === 429 || response.status >= 500) {
+        throw new AgendaParserError(
+          response.status,
+          "The agenda service is busy. Please try again or enter it by hand.",
+        );
+      }
+      throw new AgendaParserError(response.status, message);
+    }
+
+    try {
+      return z
+        .object({
+          agenda: parsedAgendaSchema,
+          model: z.string(),
+          prompt_version: z.string(),
+        })
+        .parse(body);
+    } catch {
+      throw new AgendaParserError(
+        502,
+        "The parser returned an unreadable agenda. Please try again or enter it by hand.",
+      );
+    }
+  },
+
+  saveMeetingAgenda: (
+    id: string,
+    agenda: ParsedAgenda,
+    aiSuggestion: Record<string, unknown> | null,
+  ) =>
+    request(`/api/v1/meetings/${id}/agenda`, meetingSchema, {
+      method: "POST",
+      body: JSON.stringify({ agenda, ai_suggestion: aiSuggestion }),
+    }),
 
   createMeeting: (payload: MeetingInput) =>
     request("/api/v1/meetings", meetingSchema, {

@@ -360,6 +360,17 @@ and `cd frontend && pnpm install && pnpm dev`, with `DATABASE_URL` pointed at `l
 
 ---
 
+## Part 4 – Submission Artifacts
+
+- **Agenda parser test table**: `docs/agenda_test_table.md`
+- **CloudWatch log format and capture instructions**: `docs/cloudwatch_log_example.md`
+- **Step 5 answers**: `docs/part4_step5_answers.md`
+- **Architecture decision record**: `docs/adr/0006-llm-agenda-parsing.md`
+- **C4 container view**: `docs/agenda-parser-c4.md`
+- **Demo GIF draft**: `docs/demo/agenda_demo.gif`
+
+Deploy the parser with `make deploy-ai`, then run `make deploy-frontend` so the static browser bundle receives the parser URL. The evaluation table and CloudWatch capture need real deployed Bedrock runs; do not treat example or expected values as measured results.
+
 ## 10. Verification
 
 The generated project was checked end to end:

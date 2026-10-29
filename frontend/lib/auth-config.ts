@@ -6,13 +6,15 @@ export const COGNITO_USER_POOL_ID =
   process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || "";
 export const COGNITO_CLIENT_ID =
   process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || "";
-export const COGNITO_DOMAIN =
-  process.env.NEXT_PUBLIC_COGNITO_DOMAIN || "";
+export const COGNITO_DOMAIN = process.env.NEXT_PUBLIC_COGNITO_DOMAIN || "";
 export const COGNITO_GOOGLE_ENABLED =
   process.env.NEXT_PUBLIC_COGNITO_GOOGLE_ENABLED === "true";
 
 export function isAuthEnabled(): boolean {
-  return Boolean(COGNITO_USER_POOL_ID && COGNITO_CLIENT_ID);
+  return (
+    Boolean(COGNITO_USER_POOL_ID && COGNITO_CLIENT_ID) &&
+    process.env.NEXT_PUBLIC_ALLOW_DEV_AUTH !== "true"
+  );
 }
 
 export function getCallbackUri(): string {

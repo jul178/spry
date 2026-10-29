@@ -1,6 +1,6 @@
 COMPOSE := docker compose
 
-.PHONY: help up down build logs ps migrate revision test test-backend test-frontend lint fmt clean shell-backend shell-db deploy-cognito destroy-cognito deploy-backend destroy-backend logs-backend migrate-backend cert domain deploy-frontend destroy-frontend github-role deploy-reports destroy-reports report-now logs-reports-builder logs-reports-mailer
+.PHONY: help up down build logs ps migrate revision test test-backend test-frontend lint fmt clean shell-backend shell-db deploy-cognito destroy-cognito deploy-backend destroy-backend logs-backend migrate-backend cert domain deploy-frontend destroy-frontend github-role deploy-reports destroy-reports report-now logs-reports-builder logs-reports-mailer llm-hello parse deploy-ai destroy-ai logs-ai
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -100,3 +100,18 @@ logs-reports-builder: ## Tail CloudWatch logs for the report builder
 logs-reports-mailer: ## Tail CloudWatch logs for the report mailer
 	aws logs tail /aws/lambda/$${PROJECT_NAME:-spry}-report-mailer --since 15m
 
+
+llm-hello: ## Run Bedrock LLM first call snippet from Part 1
+	uv run --python 3.13 --with "anthropic[bedrock]" --with "boto3" python scripts/llm_hello.py
+
+parse: ## Parse an agenda from laptop: make parse TEXT="..."
+	uv run --python 3.13 --with "anthropic[bedrock]" --with "boto3" --with "pydantic" --with "pydantic-settings" python scripts/parse_cli.py "$(TEXT)"
+
+deploy-ai: ## Deploy the Bedrock AI agenda parser Lambda stack (infra/ai.yml)
+	./scripts/deploy-ai.sh
+
+destroy-ai: ## Delete the AI agenda parser stack
+	./scripts/destroy-ai.sh
+
+logs-ai: ## Tail CloudWatch logs for the AI agenda parser
+	aws logs tail /aws/lambda/$${PROJECT_NAME:-spry}-agenda-parser --since 15m

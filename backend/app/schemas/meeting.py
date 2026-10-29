@@ -1,8 +1,10 @@
-import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
+import uuid
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.agenda import ParsedAgenda
 
 MeetingCategory = Literal["standup", "sync", "one_on_one", "planning", "deep_work"]
 
@@ -14,6 +16,13 @@ class MeetingCreate(BaseModel):
     duration_minutes: int = Field(ge=5, le=480)
     attendee_count: int = Field(default=2, ge=1, le=200)
     hourly_rate_usd: float = Field(default=65.0, ge=0.0, le=1000.0)
+    agenda: dict[str, Any] | None = None
+    ai_suggestion: dict[str, Any] | None = None
+
+
+class MeetingAgendaSave(BaseModel):
+    agenda: ParsedAgenda
+    ai_suggestion: dict[str, Any] | None = None
 
 
 class MeetingRead(BaseModel):
@@ -27,6 +36,8 @@ class MeetingRead(BaseModel):
     attendee_count: int
     hourly_rate_usd: float
     estimated_cost_usd: float
+    agenda: dict[str, Any] | None = None
+    ai_suggestion: dict[str, Any] | None = None
     created_at: datetime
 
 

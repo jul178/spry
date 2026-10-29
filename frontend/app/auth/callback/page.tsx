@@ -4,8 +4,24 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "react-oidc-context";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { isAuthEnabled } from "@/lib/auth-config";
 
 export default function CallbackPage() {
+  if (!isAuthEnabled()) {
+    return (
+      <div className="mx-auto flex min-h-[50vh] max-w-md flex-col items-center justify-center p-6 text-center">
+        <h1 className="text-lg font-semibold">Authentication is disabled</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          This environment does not have Cognito sign-in enabled.
+        </p>
+      </div>
+    );
+  }
+
+  return <CallbackContent />;
+}
+
+function CallbackContent() {
   const auth = useAuth();
   const router = useRouter();
 
@@ -27,7 +43,8 @@ export default function CallbackPage() {
             Authentication Error
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {auth.error.message || "Failed to complete authentication with Cognito."}
+            {auth.error.message ||
+              "Failed to complete authentication with Cognito."}
           </p>
           <a
             href="/login/"

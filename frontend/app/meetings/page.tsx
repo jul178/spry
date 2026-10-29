@@ -13,6 +13,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
+import { MeetingAgendaDialog } from "@/components/meeting-agenda-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -253,14 +254,24 @@ export default function MeetingsPage() {
                         · Est. cost ${m.estimated_cost_usd.toFixed(2)}
                       </p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteMutation.mutate(m.id)}
-                      aria-label={`Delete ${m.title}`}
-                    >
-                      <Trash2 className="size-4 text-muted-foreground hover:text-destructive" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <MeetingAgendaDialog
+                        meeting={m}
+                        onSaved={() =>
+                          queryClient.invalidateQueries({
+                            queryKey: ["meetings"],
+                          })
+                        }
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteMutation.mutate(m.id)}
+                        aria-label={`Delete ${m.title}`}
+                      >
+                        <Trash2 className="size-4 text-muted-foreground hover:text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

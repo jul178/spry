@@ -55,6 +55,20 @@ async def get_meeting(session: AsyncSession, meeting_id: uuid.UUID) -> Meeting |
     return await session.get(Meeting, meeting_id)
 
 
+async def save_meeting_agenda(
+    session: AsyncSession,
+    meeting: Meeting,
+    agenda: dict,
+    ai_suggestion: dict | None = None,
+) -> Meeting:
+    meeting.agenda = agenda
+    if ai_suggestion is not None:
+        meeting.ai_suggestion = ai_suggestion
+    await session.flush()
+    await session.refresh(meeting)
+    return meeting
+
+
 async def delete_meeting(session: AsyncSession, meeting: Meeting) -> None:
     await session.delete(meeting)
     await session.flush()

@@ -1,8 +1,9 @@
+from typing import Any
 import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, Integer, Numeric, String, func
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -27,6 +28,8 @@ class Meeting(Base):
         Numeric(10, 2), nullable=False, server_default="65.00"
     )
     estimated_cost_usd: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    agenda: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    ai_suggestion: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

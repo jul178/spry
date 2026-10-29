@@ -136,11 +136,13 @@ log "building the static export"
 rm -rf "${APP}/out"
 (cd "${APP}" && NEXT_OUTPUT=export \
   NEXT_PUBLIC_API_URL="${API_URL}" \
+  NEXT_PUBLIC_AGENDA_PARSER_URL="${NEXT_PUBLIC_AGENDA_PARSER_URL:-}" \
   NEXT_PUBLIC_COGNITO_REGION="${COGNITO_REGION:-${AWS_REGION}}" \
   NEXT_PUBLIC_COGNITO_USER_POOL_ID="${COGNITO_USER_POOL_ID:-}" \
   NEXT_PUBLIC_COGNITO_CLIENT_ID="${COGNITO_CLIENT_ID:-}" \
   NEXT_PUBLIC_COGNITO_DOMAIN="${COGNITO_DOMAIN:-}" \
   NEXT_PUBLIC_COGNITO_GOOGLE_ENABLED="${COGNITO_GOOGLE_ENABLED:-false}" \
+  NEXT_PUBLIC_ALLOW_DEV_AUTH="${NEXT_PUBLIC_ALLOW_DEV_AUTH:-false}" \
   "${PM[@]}" build)
 [[ -f "${APP}/out/index.html" ]] || die "the export produced no out/index.html"
 
@@ -177,6 +179,11 @@ echo
 echo "  site       ${SITE_URL}"
 echo "  items      ${SITE_URL}/items"
 echo "  api        ${API_URL}"
+if [[ -n "${NEXT_PUBLIC_AGENDA_PARSER_URL:-}" ]]; then
+  echo "  agenda     ${NEXT_PUBLIC_AGENDA_PARSER_URL}"
+else
+  echo "  agenda     not configured (set NEXT_PUBLIC_AGENDA_PARSER_URL in .env and redeploy)"
+fi
 echo "  bucket     s3://${BUCKET}"
 echo
 

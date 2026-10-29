@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # them; left empty elsewhere, and they are downloaded from the issuer.
     cognito_jwks: str = ""
 
+    # Bedrock LLM parser model
+    parser_model: str = "anthropic.claude-opus-5-5"
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:

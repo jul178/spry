@@ -16,10 +16,7 @@ const links = [
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const auth = useAuth();
   const authActive = isAuthEnabled();
-
-  const userEmail = auth?.user?.profile?.email || auth?.user?.profile?.preferred_username;
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-md">
@@ -63,47 +60,55 @@ export function SiteHeader() {
 
         {/* Authentication status and actions */}
         <div className="flex items-center gap-3">
-          {authActive && (
-            <>
-              {auth.isLoading ? (
-                <span className="text-xs text-muted-foreground animate-pulse">
-                  Checking session...
-                </span>
-              ) : auth.isAuthenticated && auth.user ? (
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-accent/40 px-3 py-1 text-xs font-medium text-foreground">
-                    <UserIcon className="size-3.5 text-muted-foreground" />
-                    <span className="max-w-[200px] truncate sm:max-w-[280px]">
-                      {userEmail}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      auth.removeUser();
-                      signOut();
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-border/80 px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
-                  >
-                    <LogOut className="size-3" />
-                    Sign out
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Link
-                    href="/login/"
-                    className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition hover:bg-foreground/90 shadow-sm"
-                  >
-                    <LogIn className="size-3" />
-                    Sign in
-                  </Link>
-                </div>
-              )}
-            </>
-          )}
+          {authActive && <AuthActions />}
         </div>
       </div>
     </header>
+  );
+}
+
+function AuthActions() {
+  const auth = useAuth();
+  const userEmail =
+    auth?.user?.profile?.email || auth?.user?.profile?.preferred_username;
+
+  if (auth.isLoading) {
+    return (
+      <span className="animate-pulse text-xs text-muted-foreground">
+        Checking session...
+      </span>
+    );
+  }
+
+  if (auth.isAuthenticated && auth.user) {
+    return (
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-accent/40 px-3 py-1 text-xs font-medium text-foreground">
+          <UserIcon className="size-3.5 text-muted-foreground" />
+          <span className="max-w-[200px] truncate sm:max-w-[280px]">
+            {userEmail}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            auth.removeUser();
+            signOut();
+          }}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border/80 px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+        >
+          <LogOut className="size-3" /> Sign out
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href="/login/"
+      className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background shadow-sm transition hover:bg-foreground/90"
+    >
+      <LogIn className="size-3" /> Sign in
+    </Link>
   );
 }

@@ -15,7 +15,9 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 # --- dev: full sources with hot reload, used by docker-compose.override.yml ---
 FROM base AS dev
 ENV NEXT_TELEMETRY_DISABLED=1
-COPY --from=deps /app/node_modules ./node_modules
+# The source bind mount covers /app at runtime, so keep a clean Linux install
+# outside it for the Compose entry command to copy into its node_modules volume.
+COPY --from=deps /app/node_modules /opt/spry-node-modules
 COPY . .
 EXPOSE 3000
 CMD ["pnpm", "dev"]
@@ -26,15 +28,19 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # NEXT_PUBLIC_* is inlined at build time, so it has to be present here too.
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_AGENDA_PARSER_URL=
+ENV NEXT_PUBLIC_AGENDA_PARSER_URL=$NEXT_PUBLIC_AGENDA_PARSER_URL
 # Compiled into the bundle, like the API URL. Written by make deploy-cognito.
 ARG NEXT_PUBLIC_COGNITO_REGION=us-east-1
 ARG NEXT_PUBLIC_COGNITO_CLIENT_ID=
 ARG NEXT_PUBLIC_COGNITO_DOMAIN=
 ARG NEXT_PUBLIC_COGNITO_GOOGLE_ENABLED=false
+ARG NEXT_PUBLIC_ALLOW_DEV_AUTH=false
 ENV NEXT_PUBLIC_COGNITO_REGION=$NEXT_PUBLIC_COGNITO_REGION \
     NEXT_PUBLIC_COGNITO_CLIENT_ID=$NEXT_PUBLIC_COGNITO_CLIENT_ID \
     NEXT_PUBLIC_COGNITO_DOMAIN=$NEXT_PUBLIC_COGNITO_DOMAIN \
-    NEXT_PUBLIC_COGNITO_GOOGLE_ENABLED=$NEXT_PUBLIC_COGNITO_GOOGLE_ENABLED
+    NEXT_PUBLIC_COGNITO_GOOGLE_ENABLED=$NEXT_PUBLIC_COGNITO_GOOGLE_ENABLED \
+    NEXT_PUBLIC_ALLOW_DEV_AUTH=$NEXT_PUBLIC_ALLOW_DEV_AUTH
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build

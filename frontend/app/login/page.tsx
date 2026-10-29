@@ -8,15 +8,28 @@ import { Loader2, LogIn } from "lucide-react";
 import { isAuthEnabled } from "@/lib/auth-config";
 
 export default function LoginPage() {
+  if (!isAuthEnabled()) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center justify-center rounded-xl border border-border p-8 text-center shadow-sm">
+        <h1 className="text-lg font-semibold tracking-tight">
+          Authentication not configured
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Cognito sign-in is disabled in this environment. Configure a user pool
+          to enable it.
+        </p>
+      </div>
+    );
+  }
+
+  return <LoginRedirect />;
+}
+
+function LoginRedirect() {
   const auth = useAuth();
   const router = useRouter();
-  const authConfigured = isAuthEnabled();
 
   useEffect(() => {
-    if (!authConfigured) {
-      return;
-    }
-
     if (auth.isAuthenticated) {
       router.replace("/");
       return;
@@ -27,18 +40,7 @@ export default function LoginPage() {
         console.error("Sign-in redirect error:", err);
       });
     }
-  }, [auth, authConfigured, router]);
-
-  if (!authConfigured) {
-    return (
-      <div className="mx-auto flex max-w-md flex-col items-center justify-center rounded-xl border border-border p-8 text-center shadow-sm">
-        <h1 className="text-lg font-semibold tracking-tight">Authentication not configured</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Cognito User Pool ID and Client ID are not set. Run <code className="rounded bg-muted px-1.5 py-0.5 text-xs">make deploy-cognito</code>.
-        </p>
-      </div>
-    );
-  }
+  }, [auth, router]);
 
   return (
     <div className="mx-auto flex min-h-[50vh] max-w-md flex-col items-center justify-center p-6 text-center">

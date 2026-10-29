@@ -22,6 +22,8 @@ def _test_database_url() -> str:
 
 os.environ["APP_ENV"] = "test"
 os.environ["DATABASE_URL"] = _test_database_url()
+os.environ["COGNITO_USER_POOL_ID"] = ""
+os.environ["COGNITO_CLIENT_ID"] = ""
 
 from app.db import Base, get_session  # noqa: E402
 from app.main import create_app  # noqa: E402
