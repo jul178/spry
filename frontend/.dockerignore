@@ -4,3 +4,4 @@ out/
 .git/
 .env*
 coverage/
+.pnpm-store/
