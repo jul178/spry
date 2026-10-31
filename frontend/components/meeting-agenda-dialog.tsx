@@ -43,11 +43,16 @@ function toLocalInput(value: string | null) {
 }
 
 function Suggested({ active }: { active: boolean }) {
-  return active ? (
-    <Badge variant="secondary" className="ml-2 align-middle">
+  if (!active) return null;
+  return (
+    <Badge
+      variant="secondary"
+      className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0 text-[10px] font-normal text-muted-foreground bg-muted hover:bg-muted"
+    >
+      <Sparkles className="size-2.5 text-primary" />
       suggested
     </Badge>
-  ) : null;
+  );
 }
 
 function removeRowSuggestions(
@@ -108,7 +113,7 @@ export function MeetingAgendaDialog({ meeting, onSaved }: Props) {
       return api.saveMeetingAgenda(meeting.id, cleanAgenda, aiSuggestion);
     },
     onSuccess: () => {
-      toast.success("Agenda saved");
+      toast.success("Agenda saved successfully");
       onSaved();
       setOpen(false);
     },
@@ -202,85 +207,123 @@ export function MeetingAgendaDialog({ meeting, onSaved }: Props) {
   return (
     <Dialog open={open} onOpenChange={closeDialog}>
       <Button variant="outline" size="sm" onClick={openDialog}>
-        <Sparkles className="mr-1 size-4" />{" "}
+        <Sparkles className="mr-1.5 size-4 text-primary" />
         {meeting.agenda ? "Edit agenda" : "Add agenda"}
       </Button>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[88vh] w-full max-w-[calc(100vw-2rem)] sm:max-w-2xl md:max-w-3xl overflow-y-auto overflow-x-hidden p-5 sm:p-6">
         <DialogHeader>
-          <DialogTitle>Agenda · {meeting.title}</DialogTitle>
-          <DialogDescription>
-            Paste notes for a suggested agenda, review every field, then save it
-            to this meeting.
+          <DialogTitle className="text-base sm:text-lg">
+            Agenda · {meeting.title}
+          </DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
+            Paste meeting notes or text to auto-generate a structured agenda,
+            review the fields, and save.
           </DialogDescription>
         </DialogHeader>
 
+        {/* Source Text Section */}
         <section className="grid gap-2">
-          <Label htmlFor={`agenda-source-${meeting.id}`}>Paste an agenda</Label>
+          <Label
+            htmlFor={`agenda-source-${meeting.id}`}
+            className="text-xs font-medium text-muted-foreground"
+          >
+            Paste notes or message
+          </Label>
           <Textarea
             id={`agenda-source-${meeting.id}`}
             value={pastedText}
             onChange={(event) => setPastedText(event.target.value)}
-            placeholder="Paste an email, team message, or meeting notes…"
-            rows={5}
+            placeholder="Paste an email, calendar invite, Slack/Teams update, or rough notes…"
+            rows={4}
             disabled={isParsing}
+            className="w-full text-xs sm:text-sm leading-relaxed"
           />
-          <div className="flex flex-wrap items-center gap-2">
-            {isParsing ? (
-              <>
-                <span
-                  className="flex items-center gap-2 text-sm text-muted-foreground"
-                  role="status"
-                >
-                  <LoaderCircle className="size-4 animate-spin" /> Parsing your
-                  agenda…
-                </span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              {isParsing ? (
+                <>
+                  <span
+                    className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground"
+                    role="status"
+                  >
+                    <LoaderCircle className="size-4 animate-spin text-primary" />{" "}
+                    Parsing agenda with AI…
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => parseController.current?.abort()}
+                  >
+                    <X className="mr-1 size-3.5" /> Cancel
+                  </Button>
+                </>
+              ) : (
                 <Button
-                  variant="outline"
+                  variant="default"
                   size="sm"
-                  onClick={() => parseController.current?.abort()}
+                  onClick={parseText}
+                  disabled={!pastedText.trim()}
+                  className="h-8 text-xs font-medium"
                 >
-                  <X className="mr-1 size-4" /> Cancel
+                  <Sparkles className="mr-1.5 size-3.5" /> Parse agenda
                 </Button>
-              </>
-            ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={parseText}
-                disabled={!pastedText.trim()}
-              >
-                <Sparkles className="mr-1 size-4" /> Parse agenda
-              </Button>
-            )}
-            <span className="text-xs text-muted-foreground">
-              {pastedText.length.toLocaleString()} / 10,000
+              )}
+            </div>
+            <span className="text-[11px] text-muted-foreground">
+              {pastedText.length.toLocaleString()} / 10,000 chars
             </span>
           </div>
           {parseError && (
-            <p className="text-sm text-destructive" role="alert">
+            <p
+              className="rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive"
+              role="alert"
+            >
               {parseError}
             </p>
           )}
         </section>
 
+        {/* Review & Edit Section */}
         <section className="grid gap-4 border-t border-border pt-4">
-          <h3 className="font-medium">Review agenda details</h3>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="grid gap-1.5 sm:col-span-3">
-              <Label htmlFor="agenda-title">
-                Title
-                <Suggested active={suggested.has("title")} />
-              </Label>
-              <Input
-                id="agenda-title"
-                value={agenda.title ?? ""}
-                onChange={(event) =>
-                  updateField("title", event.target.value || null)
-                }
-              />
-            </div>
-            <div className="grid gap-1.5 sm:col-span-2">
-              <Label htmlFor="agenda-start">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground">
+              Review agenda details
+            </h3>
+            {parseMetadata?.model && (
+              <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
+                Model: {parseMetadata.model.replace(/^.*\//, "")}
+              </Badge>
+            )}
+          </div>
+
+          {/* Meeting Title */}
+          <div className="grid gap-1.5">
+            <Label
+              htmlFor="agenda-title"
+              className="text-xs font-medium text-muted-foreground flex items-center"
+            >
+              Title
+              <Suggested active={suggested.has("title")} />
+            </Label>
+            <Input
+              id="agenda-title"
+              placeholder="e.g. Sprint Planning Sync"
+              value={agenda.title ?? ""}
+              onChange={(event) =>
+                updateField("title", event.target.value || null)
+              }
+              className="w-full"
+            />
+          </div>
+
+          {/* Starts At & Duration */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid gap-1.5 min-w-0">
+              <Label
+                htmlFor="agenda-start"
+                className="text-xs font-medium text-muted-foreground flex items-center"
+              >
                 Starts at
                 <Suggested active={suggested.has("starts_at")} />
               </Label>
@@ -296,11 +339,15 @@ export function MeetingAgendaDialog({ meeting, onSaved }: Props) {
                       : null,
                   )
                 }
+                className="w-full min-w-0 text-xs sm:text-sm"
               />
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="agenda-duration">
-                Duration in minutes
+            <div className="grid gap-1.5 min-w-0">
+              <Label
+                htmlFor="agenda-duration"
+                className="text-xs font-medium text-muted-foreground flex items-center"
+              >
+                Duration (minutes)
                 <Suggested active={suggested.has("duration_minutes")} />
               </Label>
               <Input
@@ -308,6 +355,7 @@ export function MeetingAgendaDialog({ meeting, onSaved }: Props) {
                 type="number"
                 min={1}
                 max={600}
+                placeholder="e.g. 45"
                 value={agenda.duration_minutes ?? ""}
                 onChange={(event) =>
                   updateField(
@@ -315,17 +363,27 @@ export function MeetingAgendaDialog({ meeting, onSaved }: Props) {
                     event.target.value ? Number(event.target.value) : null,
                   )
                 }
+                className="w-full min-w-0"
               />
             </div>
           </div>
 
-          <div className="grid gap-3">
+          {/* Topics List */}
+          <div className="grid gap-3 pt-1">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium">Topics</h4>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs sm:text-sm font-semibold">
+                  Discussion topics
+                </h4>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground font-mono">
+                  {agenda.items.length}
+                </span>
+              </div>
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
+                className="h-7 text-xs"
                 onClick={() =>
                   setAgenda((current) => ({
                     ...current,
@@ -336,115 +394,156 @@ export function MeetingAgendaDialog({ meeting, onSaved }: Props) {
                   }))
                 }
               >
-                <Plus className="mr-1 size-4" /> Add topic
+                <Plus className="mr-1 size-3.5" /> Add topic
               </Button>
             </div>
-            {agenda.items.map((item, index) => (
-              <div
-                className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-[1fr_1fr_7rem_auto]"
-                key={`topic-${index}`}
-              >
-                <div className="grid gap-1">
-                  <Label htmlFor={`topic-${index}`}>
-                    Topic
-                    <Suggested active={suggested.has(`items.${index}.topic`)} />
-                  </Label>
-                  <Input
-                    id={`topic-${index}`}
-                    value={item.topic}
-                    onChange={(event) => {
-                      const items = [...agenda.items];
-                      items[index] = { ...item, topic: event.target.value };
-                      setAgenda({ ...agenda, items });
-                      setSuggested((current) => {
-                        const next = new Set(current);
-                        next.delete(`items.${index}.topic`);
-                        return next;
-                      });
-                    }}
-                  />
-                </div>
-                <div className="grid gap-1">
-                  <Label htmlFor={`owner-${index}`}>
-                    Owner
-                    <Suggested active={suggested.has(`items.${index}.owner`)} />
-                  </Label>
-                  <Input
-                    id={`owner-${index}`}
-                    value={item.owner ?? ""}
-                    onChange={(event) => {
-                      const items = [...agenda.items];
-                      items[index] = {
-                        ...item,
-                        owner: event.target.value || null,
-                      };
-                      setAgenda({ ...agenda, items });
-                      setSuggested((current) => {
-                        const next = new Set(current);
-                        next.delete(`items.${index}.owner`);
-                        return next;
-                      });
-                    }}
-                  />
-                </div>
-                <div className="grid gap-1">
-                  <Label htmlFor={`minutes-${index}`}>
-                    Minutes
-                    <Suggested
-                      active={suggested.has(`items.${index}.minutes`)}
-                    />
-                  </Label>
-                  <Input
-                    id={`minutes-${index}`}
-                    type="number"
-                    min={1}
-                    max={480}
-                    value={item.minutes ?? ""}
-                    onChange={(event) => {
-                      const items = [...agenda.items];
-                      items[index] = {
-                        ...item,
-                        minutes: event.target.value
-                          ? Number(event.target.value)
-                          : null,
-                      };
-                      setAgenda({ ...agenda, items });
-                      setSuggested((current) => {
-                        const next = new Set(current);
-                        next.delete(`items.${index}.minutes`);
-                        return next;
-                      });
-                    }}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Remove topic"
-                  onClick={() => {
-                    setAgenda({
-                      ...agenda,
-                      items: agenda.items.filter((_, i) => i !== index),
-                    });
-                    setSuggested((current) =>
-                      removeRowSuggestions(current, "items", index),
-                    );
-                  }}
+
+            {agenda.items.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border/80 p-3 text-center text-xs text-muted-foreground">
+                No discussion topics yet. Click &quot;Add topic&quot; or parse notes above.
+              </p>
+            ) : (
+              agenda.items.map((item, index) => (
+                <div
+                  className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-2.5 transition-colors hover:border-border"
+                  key={`topic-${index}`}
                 >
-                  <X className="size-4" />
-                </Button>
-              </div>
-            ))}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <Label
+                        htmlFor={`topic-${index}`}
+                        className="text-xs font-medium text-muted-foreground flex items-center"
+                      >
+                        Topic
+                        <Suggested
+                          active={suggested.has(`items.${index}.topic`)}
+                        />
+                      </Label>
+                      <Input
+                        id={`topic-${index}`}
+                        placeholder="e.g. Discuss Q4 roadmap and priorities"
+                        value={item.topic}
+                        onChange={(event) => {
+                          const items = [...agenda.items];
+                          items[index] = { ...item, topic: event.target.value };
+                          setAgenda({ ...agenda, items });
+                          setSuggested((current) => {
+                            const next = new Set(current);
+                            next.delete(`items.${index}.topic`);
+                            return next;
+                          });
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="mt-6 text-muted-foreground hover:text-destructive shrink-0"
+                      aria-label="Remove topic"
+                      onClick={() => {
+                        setAgenda({
+                          ...agenda,
+                          items: agenda.items.filter((_, i) => i !== index),
+                        });
+                        setSuggested((current) =>
+                          removeRowSuggestions(current, "items", index),
+                        );
+                      }}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    <div className="space-y-1 min-w-0">
+                      <Label
+                        htmlFor={`owner-${index}`}
+                        className="text-xs font-medium text-muted-foreground flex items-center"
+                      >
+                        Owner
+                        <Suggested
+                          active={suggested.has(`items.${index}.owner`)}
+                        />
+                      </Label>
+                      <Input
+                        id={`owner-${index}`}
+                        placeholder="e.g. Taras"
+                        value={item.owner ?? ""}
+                        onChange={(event) => {
+                          const items = [...agenda.items];
+                          items[index] = {
+                            ...item,
+                            owner: event.target.value || null,
+                          };
+                          setAgenda({ ...agenda, items });
+                          setSuggested((current) => {
+                            const next = new Set(current);
+                            next.delete(`items.${index}.owner`);
+                            return next;
+                          });
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="space-y-1 min-w-0">
+                      <Label
+                        htmlFor={`minutes-${index}`}
+                        className="text-xs font-medium text-muted-foreground flex items-center"
+                      >
+                        Duration (min)
+                        <Suggested
+                          active={suggested.has(`items.${index}.minutes`)}
+                        />
+                      </Label>
+                      <Input
+                        id={`minutes-${index}`}
+                        type="number"
+                        min={1}
+                        max={480}
+                        placeholder="e.g. 15"
+                        value={item.minutes ?? ""}
+                        onChange={(event) => {
+                          const items = [...agenda.items];
+                          items[index] = {
+                            ...item,
+                            minutes: event.target.value
+                              ? Number(event.target.value)
+                              : null,
+                          };
+                          setAgenda({ ...agenda, items });
+                          setSuggested((current) => {
+                            const next = new Set(current);
+                            next.delete(`items.${index}.minutes`);
+                            return next;
+                          });
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
-          <div className="grid gap-3">
+          {/* Action Items List */}
+          <div className="grid gap-3 pt-1">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium">Action items</h4>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs sm:text-sm font-semibold">
+                  Action items
+                </h4>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground font-mono">
+                  {agenda.action_items.length}
+                </span>
+              </div>
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
+                className="h-7 text-xs"
                 onClick={() =>
                   setAgenda((current) => ({
                     ...current,
@@ -455,116 +554,144 @@ export function MeetingAgendaDialog({ meeting, onSaved }: Props) {
                   }))
                 }
               >
-                <Plus className="mr-1 size-4" /> Add action
+                <Plus className="mr-1 size-3.5" /> Add action
               </Button>
             </div>
-            {agenda.action_items.map((item, index) => (
-              <div
-                className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-[1fr_1fr_9rem_auto]"
-                key={`action-${index}`}
-              >
-                <div className="grid gap-1">
-                  <Label htmlFor={`task-${index}`}>
-                    Task
-                    <Suggested
-                      active={suggested.has(`action_items.${index}.task`)}
-                    />
-                  </Label>
-                  <Input
-                    id={`task-${index}`}
-                    value={item.task}
-                    onChange={(event) => {
-                      const items = [...agenda.action_items];
-                      items[index] = { ...item, task: event.target.value };
-                      setAgenda({ ...agenda, action_items: items });
-                      setSuggested((current) => {
-                        const next = new Set(current);
-                        next.delete(`action_items.${index}.task`);
-                        return next;
-                      });
-                    }}
-                  />
-                </div>
-                <div className="grid gap-1">
-                  <Label htmlFor={`action-owner-${index}`}>
-                    Owner
-                    <Suggested
-                      active={suggested.has(`action_items.${index}.owner`)}
-                    />
-                  </Label>
-                  <Input
-                    id={`action-owner-${index}`}
-                    value={item.owner ?? ""}
-                    onChange={(event) => {
-                      const items = [...agenda.action_items];
-                      items[index] = {
-                        ...item,
-                        owner: event.target.value || null,
-                      };
-                      setAgenda({ ...agenda, action_items: items });
-                      setSuggested((current) => {
-                        const next = new Set(current);
-                        next.delete(`action_items.${index}.owner`);
-                        return next;
-                      });
-                    }}
-                  />
-                </div>
-                <div className="grid gap-1">
-                  <Label htmlFor={`due-${index}`}>
-                    Due date
-                    <Suggested
-                      active={suggested.has(`action_items.${index}.due`)}
-                    />
-                  </Label>
-                  <Input
-                    id={`due-${index}`}
-                    type="date"
-                    value={item.due ?? ""}
-                    onChange={(event) => {
-                      const items = [...agenda.action_items];
-                      items[index] = {
-                        ...item,
-                        due: event.target.value || null,
-                      };
-                      setAgenda({ ...agenda, action_items: items });
-                      setSuggested((current) => {
-                        const next = new Set(current);
-                        next.delete(`action_items.${index}.due`);
-                        return next;
-                      });
-                    }}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Remove action item"
-                  onClick={() => {
-                    setAgenda({
-                      ...agenda,
-                      action_items: agenda.action_items.filter(
-                        (_, i) => i !== index,
-                      ),
-                    });
-                    setSuggested((current) =>
-                      removeRowSuggestions(current, "action_items", index),
-                    );
-                  }}
+
+            {agenda.action_items.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border/80 p-3 text-center text-xs text-muted-foreground">
+                No action items yet. Click &quot;Add action&quot; to assign tasks.
+              </p>
+            ) : (
+              agenda.action_items.map((item, index) => (
+                <div
+                  className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-2.5 transition-colors hover:border-border"
+                  key={`action-${index}`}
                 >
-                  <X className="size-4" />
-                </Button>
-              </div>
-            ))}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <Label
+                        htmlFor={`task-${index}`}
+                        className="text-xs font-medium text-muted-foreground flex items-center"
+                      >
+                        Action task
+                        <Suggested
+                          active={suggested.has(`action_items.${index}.task`)}
+                        />
+                      </Label>
+                      <Input
+                        id={`task-${index}`}
+                        placeholder="e.g. Send architecture diagram to client"
+                        value={item.task}
+                        onChange={(event) => {
+                          const items = [...agenda.action_items];
+                          items[index] = { ...item, task: event.target.value };
+                          setAgenda({ ...agenda, action_items: items });
+                          setSuggested((current) => {
+                            const next = new Set(current);
+                            next.delete(`action_items.${index}.task`);
+                            return next;
+                          });
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="mt-6 text-muted-foreground hover:text-destructive shrink-0"
+                      aria-label="Remove action item"
+                      onClick={() => {
+                        setAgenda({
+                          ...agenda,
+                          action_items: agenda.action_items.filter(
+                            (_, i) => i !== index,
+                          ),
+                        });
+                        setSuggested((current) =>
+                          removeRowSuggestions(current, "action_items", index),
+                        );
+                      }}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    <div className="space-y-1 min-w-0">
+                      <Label
+                        htmlFor={`action-owner-${index}`}
+                        className="text-xs font-medium text-muted-foreground flex items-center"
+                      >
+                        Assignee
+                        <Suggested
+                          active={suggested.has(`action_items.${index}.owner`)}
+                        />
+                      </Label>
+                      <Input
+                        id={`action-owner-${index}`}
+                        placeholder="e.g. Taras"
+                        value={item.owner ?? ""}
+                        onChange={(event) => {
+                          const items = [...agenda.action_items];
+                          items[index] = {
+                            ...item,
+                            owner: event.target.value || null,
+                          };
+                          setAgenda({ ...agenda, action_items: items });
+                          setSuggested((current) => {
+                            const next = new Set(current);
+                            next.delete(`action_items.${index}.owner`);
+                            return next;
+                          });
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="space-y-1 min-w-0">
+                      <Label
+                        htmlFor={`due-${index}`}
+                        className="text-xs font-medium text-muted-foreground flex items-center"
+                      >
+                        Due date
+                        <Suggested
+                          active={suggested.has(`action_items.${index}.due`)}
+                        />
+                      </Label>
+                      <Input
+                        id={`due-${index}`}
+                        type="date"
+                        value={item.due ?? ""}
+                        onChange={(event) => {
+                          const items = [...agenda.action_items];
+                          items[index] = {
+                            ...item,
+                            due: event.target.value || null,
+                          };
+                          setAgenda({ ...agenda, action_items: items });
+                          setSuggested((current) => {
+                            const next = new Set(current);
+                            next.delete(`action_items.${index}.due`);
+                            return next;
+                          });
+                        }}
+                        className="w-full min-w-0 text-xs sm:text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </section>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => closeDialog(false)}>
+        <DialogFooter className="mt-3 flex-row justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={() => closeDialog(false)}>
             Close
           </Button>
           <Button
+            size="sm"
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending || !hasAgendaContent}
           >
