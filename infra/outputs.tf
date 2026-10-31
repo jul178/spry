@@ -45,7 +45,7 @@ output "google_javascript_origin" {
 
 output "google_configured" {
   description = "Whether Google IdP is configured"
-  value       = var.google_client_id != "" && var.google_client_secret != ""
+  value       = nonsensitive(var.google_client_id != "" && var.google_client_secret != "")
 }
 
 # --- Reports Outputs (was infra/reports.yaml) ---

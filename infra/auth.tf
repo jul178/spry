@@ -106,14 +106,3 @@ resource "aws_cognito_user_pool_domain" "main" {
   user_pool_id          = aws_cognito_user_pool.main.id
   managed_login_version = 2
 }
-
-# Managed Login Branding
-resource "aws_cognito_managed_login_branding" "main" {
-  user_pool_id                = aws_cognito_user_pool.main.id
-  client_id                   = aws_cognito_user_pool_client.web.id
-  use_cognito_provided_values = true
-
-  depends_on = [
-    aws_cognito_user_pool_domain.main
-  ]
-}

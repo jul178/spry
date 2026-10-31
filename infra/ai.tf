@@ -73,7 +73,8 @@ resource "aws_lambda_function" "agenda_parser" {
   architectures = [var.architecture]
 
   logging_config {
-    log_group = aws_cloudwatch_log_group.agenda_parser.name
+    log_format = "Text"
+    log_group  = aws_cloudwatch_log_group.agenda_parser.name
   }
 
   environment {

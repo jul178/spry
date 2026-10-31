@@ -197,7 +197,8 @@ resource "aws_lambda_function" "builder" {
   role          = aws_iam_role.builder.arn
 
   logging_config {
-    log_group = aws_cloudwatch_log_group.builder.name
+    log_format = "Text"
+    log_group  = aws_cloudwatch_log_group.builder.name
   }
 
   vpc_config {
@@ -357,7 +358,8 @@ resource "aws_lambda_function" "mailer" {
   source_code_hash = data.archive_file.mailer.output_base64sha256
 
   logging_config {
-    log_group = aws_cloudwatch_log_group.mailer.name
+    log_format = "Text"
+    log_group  = aws_cloudwatch_log_group.mailer.name
   }
 
   environment {
