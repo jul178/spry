@@ -32,6 +32,12 @@ resource "aws_cognito_user_pool" "main" {
   tags = {
     PROJECT_NAME = var.project_name
   }
+
+  lifecycle {
+    ignore_changes = [
+      schema
+    ]
+  }
 }
 
 # Optional Google OAuth 2.0 Identity Provider
