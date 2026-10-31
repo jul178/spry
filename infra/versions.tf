@@ -5,7 +5,7 @@ terraform {
     organization = "ooad-jul178"
 
     workspaces {
-      name = "spry-dev"
+      name = "spry"
     }
   }
 
