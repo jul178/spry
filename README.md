@@ -72,6 +72,14 @@ Peach/
 │   └── deploy-backend.yml        # ships when a commit message says "deploy"
 │
 ├── infra/
+│   ├── versions.tf               # Terraform config: HCP Terraform cloud block, AWS provider
+│   ├── variables.tf              # Input variables (types, defaults, sensitive flags)
+│   ├── auth.tf                   # Cognito User Pool, Google IdP, web client, domain, branding
+│   ├── reports.tf                # S3 bucket, SQS queue/DLQ, VPC Lambda builder, SES mailer
+│   ├── mailer.py                 # SES mailer Lambda handler code packaged for Terraform
+│   ├── ai.tf                     # Bedrock Claude agenda parser Lambda with Function URL
+│   ├── outputs.tf                # Exported outputs for Makefile and frontend build
+│   ├── terraform.tfvars          # Non-sensitive configuration values
 │   ├── backend.yaml              # CloudFormation: Lambda + function URL + Aurora Serverless v2
 │   ├── frontend.yaml             # CloudFormation: S3 + CloudFront (+ optional custom domain)
 │   └── github-oidc.yaml          # CloudFormation: the role Actions assumes
@@ -593,3 +601,28 @@ Compose, Dockerfiles, tooling, tests scaffolding — stays as is.
 
 The deliberate gaps, left for later: authentication and authorization, multi-tenancy, background
 workers, and a CI path for the frontend deploy.
+
+## 15. Infrastructure as Code (Terraform & HCP Terraform)
+
+In Lab 7, Spry migrated its supplementary cloud resources (`auth`, `reports`, `ai`) from CloudFormation templates to **Terraform**, managed in **HCP Terraform** (`ooad-jul178/spry-dev`).
+
+### Architecture & Managed Resources
+- **Auth (`infra/auth.tf`):** Cognito User Pool with email/password, Google OAuth federation, Managed Login v2, and public web client.
+- **Reports (`infra/reports.tf`):** Weekly Monday report pipeline: EventBridge Scheduler -> SQS buffer & DLQ -> VPC Lambda builder -> S3 reports bucket -> S3 notification -> SES mailer Lambda. Circular dependency from Lab 5 is resolved via decoupled resource declarations.
+- **AI Parser (`infra/ai.tf`):** Bedrock Claude agenda parser Lambda running outside VPC with public Function URL and IAM permissions.
+
+### Deployment Workflow (The Two Roads)
+1. **Application Code (GitHub Actions):** CI deploys backend and frontend images through AWS OIDC role.
+2. **Infrastructure Code (HCP Terraform):**
+   - **Speculative Plan:** Pushing a branch or opening a pull request triggers an automated remote speculative `terraform plan` in HCP Terraform, reporting results directly in GitHub pull request checks.
+   - **Remote Apply:** Merging into `main` automatically triggers `terraform apply` in HCP Terraform using dynamic AWS OIDC credentials (`hcp-terraform-ooad-jul178`).
+   - Developer laptops never execute `terraform apply` directly, enforcing complete change auditing and state integrity.
+
+### Make Targets
+```bash
+make infra-fmt       # Format HCL files in infra/
+make infra-validate  # Check syntax and references
+make infra-plan      # Run speculative remote plan via HCP Terraform
+make infra-output    # Inspect Terraform outputs
+make sync-env        # Query terraform output and sync Cognito & AI URLs to .env
+```

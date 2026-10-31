@@ -34,3 +34,12 @@ pgdata/
 spry_*.png
 spry_*.md
 
+
+# --- terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+infra/*.zip

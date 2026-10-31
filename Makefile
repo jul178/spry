@@ -1,9 +1,9 @@
 COMPOSE := docker compose
 
-.PHONY: help up down build logs ps migrate revision test test-backend test-frontend lint fmt clean shell-backend shell-db deploy-cognito destroy-cognito deploy-backend destroy-backend logs-backend migrate-backend cert domain deploy-frontend destroy-frontend github-role deploy-reports destroy-reports report-now logs-reports-builder logs-reports-mailer llm-hello parse deploy-ai destroy-ai logs-ai
+.PHONY: help up down build logs ps migrate revision test test-backend test-frontend lint fmt clean shell-backend shell-db infra-fmt infra-validate infra-plan infra-output sync-env deploy-cognito deploy-reports deploy-ai deploy-backend destroy-backend logs-backend migrate-backend cert domain deploy-frontend destroy-frontend github-role report-now logs-reports-builder logs-reports-mailer llm-hello parse logs-ai
 
 help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 up: ## Start the whole stack (detached)
 	$(COMPOSE) up -d --build
@@ -51,11 +51,32 @@ shell-backend: ## Shell into the backend container
 shell-db: ## psql into the database
 	$(COMPOSE) exec db psql -U $${POSTGRES_USER:-peach} -d $${POSTGRES_DB:-peach}
 
-deploy-cognito: ## Create/update the Cognito user pool; writes COGNITO_* to .env and prints them
-	./scripts/deploy-cognito.sh
+# --- Terraform Infrastructure (HCP Terraform) -------------------------------
+# In Lab 7, infra/auth, infra/reports, and infra/ai moved from CloudFormation to Terraform.
+# Applies happen only in HCP Terraform upon git push / merge, never directly from laptop.
 
-destroy-cognito: ## Delete the Cognito stack, every account in the pool included
-	./scripts/destroy-cognito.sh
+infra-fmt: ## Format Terraform files in infra/
+	terraform -chdir=infra fmt
+
+infra-validate: ## Validate Terraform syntax and configuration
+	terraform -chdir=infra validate
+
+infra-plan: ## Run terraform plan via HCP Terraform (speculative remote plan)
+	terraform -chdir=infra plan
+
+infra-output: ## Show Terraform outputs
+	terraform -chdir=infra output
+
+sync-env: ## Refresh .env with outputs from Terraform (Cognito, AI parser URL, etc.)
+	python3 scripts/sync-env-tf.py
+
+deploy-cognito: infra-plan ## (Migrated to Terraform) Run make infra-plan; apply runs in HCP Terraform
+
+deploy-reports: infra-plan ## (Migrated to Terraform) Run make infra-plan; apply runs in HCP Terraform
+
+deploy-ai: infra-plan ## (Migrated to Terraform) Run make infra-plan; apply runs in HCP Terraform
+
+# --- Backend & Frontend Deploys ----------------------------------------------
 
 deploy-backend: ## Build + push the image, roll the Lambda (function URL + Aurora), migrate, write BACKEND_URL to .env
 	./scripts/deploy-backend.sh
@@ -85,12 +106,6 @@ destroy-frontend: ## Delete the frontend stack (bucket + distribution)
 github-role: ## Create the IAM role GitHub Actions assumes to deploy (OIDC, no keys)
 	./scripts/github-role.sh
 
-deploy-reports: ## Deploy the weekly reports stack (S3 bucket, SQS queues, builder & mailer Lambdas, EventBridge schedule)
-	./scripts/deploy-reports.sh
-
-destroy-reports: ## Delete the reports stack and empty its S3 bucket
-	./scripts/destroy-reports.sh
-
 report-now: ## Build and email an on-demand report for a given week: make report-now WEEK=2026-W39
 	./scripts/report-now.sh $(WEEK)
 
@@ -100,18 +115,11 @@ logs-reports-builder: ## Tail CloudWatch logs for the report builder
 logs-reports-mailer: ## Tail CloudWatch logs for the report mailer
 	aws logs tail /aws/lambda/$${PROJECT_NAME:-spry}-report-mailer --since 15m
 
-
-llm-hello: ## Run Bedrock LLM first call snippet from Part 1
+llm-hello: ## Run Bedrock LLM first call snippet
 	uv run --python 3.13 --with "anthropic[bedrock]" --with "boto3" python scripts/llm_hello.py
 
 parse: ## Parse an agenda from laptop: make parse TEXT="..."
 	uv run --python 3.13 --with "anthropic[bedrock]" --with "boto3" --with "pydantic" --with "pydantic-settings" python scripts/parse_cli.py "$(TEXT)"
-
-deploy-ai: ## Deploy the Bedrock AI agenda parser Lambda stack (infra/ai.yml)
-	./scripts/deploy-ai.sh
-
-destroy-ai: ## Delete the AI agenda parser stack
-	./scripts/destroy-ai.sh
 
 logs-ai: ## Tail CloudWatch logs for the AI agenda parser
 	aws logs tail /aws/lambda/$${PROJECT_NAME:-spry}-agenda-parser --since 15m
