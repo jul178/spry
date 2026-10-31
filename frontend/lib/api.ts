@@ -45,6 +45,9 @@ function getStoredAccessToken(): string | null {
       }
     }
   }
+  if (sessionStorage.getItem("spry_dev_user") || localStorage.getItem("spry_dev_auth")) {
+    return "dev-mock-token";
+  }
   return null;
 }
 

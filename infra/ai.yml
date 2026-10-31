@@ -79,7 +79,6 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - "bedrock-mantle:CreateInference"
                   - "bedrock:InvokeModel"
                   - "bedrock:InvokeModelWithResponseStream"
                   - "bedrock:Converse"
@@ -125,9 +124,12 @@ Resources:
       TargetFunctionArn: !Ref AgendaParserFunction
       AuthType: NONE
       Cors:
-        AllowOrigins: !Split [",", !Ref CorsOrigins]
-        AllowMethods: ["POST", "OPTIONS"]
-        AllowHeaders: ["authorization", "content-type"]
+        AllowOrigins:
+          - "*"
+        AllowMethods:
+          - "*"
+        AllowHeaders:
+          - "*"
         MaxAge: 300
 
   AgendaParserFunctionUrlPermission:
