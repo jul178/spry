@@ -136,3 +136,41 @@ async def test_save_meeting_agenda_endpoint(client: AsyncClient):
         json={"agenda": agenda_data},
     )
     assert notFound.status_code == 404
+
+
+async def test_parse_agenda_endpoint(client: AsyncClient):
+    """POST /meetings/parse-agenda parses unstructured text into structured agenda."""
+    uk_text = (
+        "Пн 10:00, синк по прайсингу, 45 хв. "
+        "1) нові тарифи Pro — Олена, 15 хв "
+        "2) фідбек від клієнтів — Taras "
+        "3) що робимо з річною знижкою. "
+        "Taras до п'ятниці збирає порівняння з конкурентами."
+    )
+    resp = await client.post(
+        "/api/v1/meetings/parse-agenda",
+        json={"text": uk_text, "today": "2026-10-29", "tz": "UTC"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "agenda" in data
+    assert "model" in data
+    assert data["prompt_version"] == "agenda-v1"
+    agenda = data["agenda"]
+    assert agenda["duration_minutes"] == 45
+    assert len(agenda["items"]) >= 2
+
+    # Reject oversized
+    big_text = "a" * 10001
+    resp_big = await client.post(
+        "/api/v1/meetings/parse-agenda",
+        json={"text": big_text, "today": "2026-10-29", "tz": "UTC"},
+    )
+    assert resp_big.status_code == 413
+
+    # Reject non-agenda
+    resp_empty = await client.post(
+        "/api/v1/meetings/parse-agenda",
+        json={"text": "Shopping list: apples and oranges", "today": "2026-10-29", "tz": "UTC"},
+    )
+    assert resp_empty.status_code == 422

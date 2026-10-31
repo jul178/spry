@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "react-oidc-context";
@@ -60,14 +61,14 @@ export function SiteHeader() {
 
         {/* Authentication status and actions */}
         <div className="flex items-center gap-3">
-          {authActive && <AuthActions />}
+          {authActive ? <CognitoAuthActions /> : <DevAuthActions />}
         </div>
       </div>
     </header>
   );
 }
 
-function AuthActions() {
+function CognitoAuthActions() {
   const auth = useAuth();
   const userEmail =
     auth?.user?.profile?.email || auth?.user?.profile?.preferred_username;
@@ -94,6 +95,50 @@ function AuthActions() {
           onClick={() => {
             auth.removeUser();
             signOut();
+          }}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border/80 px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+        >
+          <LogOut className="size-3" /> Sign out
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href="/login/"
+      className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background shadow-sm transition hover:bg-foreground/90"
+    >
+      <LogIn className="size-3" /> Sign in
+    </Link>
+  );
+}
+
+function DevAuthActions() {
+  const [devUser, setDevUser] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setDevUser(sessionStorage.getItem("spry_dev_user") || "demo@spry.local");
+    }
+  }, []);
+
+  if (devUser) {
+    return (
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-accent/40 px-3 py-1 text-xs font-medium text-foreground">
+          <UserIcon className="size-3.5 text-muted-foreground" />
+          <span className="max-w-[200px] truncate sm:max-w-[280px]">
+            {devUser}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              sessionStorage.removeItem("spry_dev_user");
+              setDevUser(null);
+            }
           }}
           className="inline-flex items-center gap-1.5 rounded-md border border-border/80 px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
         >

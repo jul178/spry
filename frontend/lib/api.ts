@@ -228,10 +228,12 @@ export const api = {
   listMeetings: () => request("/api/v1/meetings", meetingListSchema),
 
   parseAgenda: async (text: string, signal: AbortSignal) => {
-    const url = process.env.NEXT_PUBLIC_AGENDA_PARSER_URL;
-    if (!url) {
-      throw new AgendaParserError(0, "Agenda parsing is not configured yet.");
-    }
+    const rawParserUrl = process.env.NEXT_PUBLIC_AGENDA_PARSER_URL;
+    const baseApi = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const url =
+      rawParserUrl && rawParserUrl.trim()
+        ? rawParserUrl.trim()
+        : `${baseApi.replace(/\/+$/, "")}/api/v1/meetings/parse-agenda`;
 
     let response: Response;
     try {
