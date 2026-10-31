@@ -20,12 +20,7 @@ resource "aws_cognito_user_pool" "main" {
     require_uppercase = true
   }
 
-  schema {
-    name                = "email"
-    attribute_data_type = "String"
-    required            = true
-    mutable             = true
-  }
+
 
   account_recovery_setting {
     recovery_mechanism {

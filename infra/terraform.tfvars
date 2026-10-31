@@ -14,3 +14,6 @@ create_email_identity = false
 parser_model          = "anthropic.claude-opus-5-5"
 log_retention_days    = 7
 cors_origins          = "*"
+
+builder_image_uri     = "132568187649.dkr.ecr.us-east-1.amazonaws.com/spry-backend:df12f243f090"
+ai_image_uri          = "132568187649.dkr.ecr.us-east-1.amazonaws.com/spry-backend:df12f243f090"
