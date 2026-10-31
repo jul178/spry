@@ -39,6 +39,24 @@ export default function LoginPage() {
     });
   }
 
+  function handleGoogleLogin() {
+    if (!auth) {
+      router.replace("/");
+      return;
+    }
+    setRedirecting(true);
+    auth
+      .signinRedirect({
+        extraQueryParams: {
+          identity_provider: "Google",
+        },
+      })
+      .catch((err) => {
+        console.error("Google sign-in redirect error:", err);
+        setRedirecting(false);
+      });
+  }
+
   function handleDevLogin() {
     if (typeof window !== "undefined") {
       sessionStorage.setItem("spry_dev_user", "demo@spry.local");
@@ -86,7 +104,7 @@ export default function LoginPage() {
                   variant="outline"
                   size="lg"
                   className="w-full font-medium gap-2"
-                  onClick={handleCognitoLogin}
+                  onClick={handleGoogleLogin}
                   disabled={redirecting || auth?.isLoading}
                 >
                   <svg className="size-4" viewBox="0 0 24 24">

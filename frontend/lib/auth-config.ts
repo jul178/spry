@@ -11,10 +11,7 @@ export const COGNITO_GOOGLE_ENABLED =
   process.env.NEXT_PUBLIC_COGNITO_GOOGLE_ENABLED === "true";
 
 export function isAuthEnabled(): boolean {
-  return (
-    Boolean(COGNITO_USER_POOL_ID && COGNITO_CLIENT_ID) &&
-    process.env.NEXT_PUBLIC_ALLOW_DEV_AUTH !== "true"
-  );
+  return Boolean(COGNITO_USER_POOL_ID && COGNITO_CLIENT_ID);
 }
 
 export function getCallbackUri(): string {
