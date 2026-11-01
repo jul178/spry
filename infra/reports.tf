@@ -192,7 +192,7 @@ resource "aws_lambda_function" "builder" {
   }
 
   architectures = [var.architecture]
-  memory_size   = 512
+  memory_size   = 1024
   timeout       = 60
   role          = aws_iam_role.builder.arn
 

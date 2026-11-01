@@ -68,8 +68,8 @@ resource "aws_lambda_function" "agenda_parser" {
   }
 
   role          = aws_iam_role.agenda_parser.arn
-  timeout       = 30
-  memory_size   = 512
+  timeout       = 60
+  memory_size   = 1024
   architectures = [var.architecture]
 
   logging_config {
